@@ -114,26 +114,13 @@ function outliner_admin() {
 	
 		if (isset($_POST["save"]) && trim($_POST["save"])!=='') {
 
-			$sql = 'SELECT item_id,item_title,item_URL FROM '.$items_table.' WHERE item_list="1"';
+			// See if want to save changes or add a row
+			foreach ($_POST['items'] as $field => $items) { 
 
-			$items = $wpdb->get_results($sql);
-
-			if (!empty($items)) {
+				$sql = $sql . 'UPDATE '.$items_table.' SET item_title="'.$items['title'].'",item_URL="'.$items['URL'].'" WHERE item_id="'.$items['id'].'";';
 				
-				$sql = NULL;
-
-				foreach ($items as $item) { 
-
-					$item_id = $item->item_id;
-					$item_title = 'item'.$item->item_id.'-title';
-					$item_URL = 'item'.$item->item_id.'-URL';
-
-					$sql = $sql . 'UPDATE '.$items_table.' SET item_title="'.$_POST[$item_title].'",item_URL="'.$_POST[$item_URL].'" WHERE item_id='.$item_id.';';
-				}
-
 			}
 
-			if ($debug) { echo '<br /><br />'; echo $sql; }
 
 			dbDelta($sql);
 
@@ -141,7 +128,6 @@ function outliner_admin() {
 			
 			$sql = 'INSERT INTO '.$items_table.' (item_list) VALUES ("1")';
 			
-			if ($debug) { echo '<br /><br />'; echo $sql; }
 			$wpdb->query($sql);
 			
 		} else {
@@ -161,8 +147,6 @@ function outliner_admin() {
 		<input type="hidden" name="action" value="outliner_update" />
 
     	<h2>Lists Outliner</h2>
-
-		<p class="submit"><input name="save" id="save" type="submit" value="Save"></p>
 		
 		<table class="form-table">
 			<tbody>
@@ -172,25 +156,33 @@ function outliner_admin() {
 			$items = $wpdb->get_results($sql);
 
 			if (!empty($items)) {
-				foreach ($items as $item) { ?>
+				foreach ($items as $item) { 
+					
+					$id = $item->item_id;
+					$title = $item->item_title;
+					$URL = $item->item_URL; ?>
 
 			<tr valign="top">
 				<th scope="row">
 					<label 
-					for="item<?php echo $item->item_id; ?>"><?php 
-					echo $item->item_id; ?></label>
+					for="items[<?php echo $id; ?>][title]"><?php 
+					echo $id; ?></label>
+					<input type="hidden"
+					id="items[<?php echo $id; ?>][id]"
+					name="items[<?php echo $id; ?>][id]"
+					value="<?php echo $id; ?>" /">
 				</th>
 				<td>
 					<input type="text"
-					id="item<?php echo $item->item_id; ?>-title"
-					name="item<?php echo $item->item_id; ?>-title"
-					value="<?php echo $item->item_title; ?>" />
+					id="items[<?php echo $id; ?>][title]"
+					name="items[<?php echo $id; ?>][title]"
+					value="<?php echo $title; ?>" />
 				</td>
 				<td>
 					<input type="text" 
-					id="item<?php echo $item->item_id; ?>-URL"
-					name="item<?php echo $item->item_id; ?>-URL"
-					value="<?php echo $item->item_URL; ?>" />
+					id="items[<?php echo $id; ?>][URL]"
+					name="items[<?php echo $id; ?>][URL]"
+					value="<?php echo $URL; ?>" />
 				</td>
 			</tr>
 
@@ -198,9 +190,9 @@ function outliner_admin() {
 			} ?>
 			
 			<tr valign="top">
-				<th scope="row">
+				<td colspan="3">
 					<input name="add" id="add" type="submit" value="Add row">
-				</th>
+				</td>
 			</tr>	
 			
 			</tbody>
@@ -208,8 +200,9 @@ function outliner_admin() {
 
 		<p class="submit"><input name="save" id="save" type="submit" value="Save"></p>
    
-	</form> <?php
-}
+	</form> 
+
+<?php }
 
 // Add admin pages
 function outliner_add_pages() {
