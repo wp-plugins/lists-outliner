@@ -39,7 +39,7 @@ function outliner_db($outlines,$items) {
 		UNIQUE KEY (list_id)
 	);";
 
-	echo $sql;
+	if ($debug) { echo $sql; }
 	dbDelta($sql);
 
 	$sql = "CREATE TABLE " . $items . " (
@@ -52,7 +52,7 @@ function outliner_db($outlines,$items) {
 		UNIQUE KEY (item_id) 
 	);";
 
-	echo $sql;
+	if ($debug) { echo $sql; }
 	dbDelta($sql);
 	
 }
@@ -85,10 +85,141 @@ function outliner_init() {
 	
 }
 
-function outline() {
-	echo 'outline!';
+function outline($list) {
+	
+	global $wpdb;
+	
+	$outlines_table = $wpdb->prefix . "outlines";
+	$items_table = $wpdb->prefix . "outline_items";
+	
+	$sql = 'SELECT item_title FROM '.$items_table.' WHERE item_list="'.$list.'"';
+	
+	$items = $wpdb->get_results($sql);
+	
+	if (!empty($items)) {
+		foreach ($items as $item) {
+			echo $item->item_title . '<br />';
+		}
+	}
 }
+
+function outliner_admin() {
+	
+	require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
+	global $wpdb;
+	$outlines_table = $wpdb->prefix . "outlines";
+	$items_table = $wpdb->prefix . "outline_items";
+	
+	if ( $_POST['action'] = 'outliner_update' ) {
+	
+		if (isset($_POST["save"]) && trim($_POST["save"])!=='') {
+
+			$sql = 'SELECT item_id,item_title,item_URL FROM '.$items_table.' WHERE item_list="1"';
+
+			$items = $wpdb->get_results($sql);
+
+			if (!empty($items)) {
+				
+				$sql = NULL;
+
+				foreach ($items as $item) { 
+
+					$item_id = $item->item_id;
+					$item_title = 'item'.$item->item_id.'-title';
+					$item_URL = 'item'.$item->item_id.'-URL';
+
+					$sql = $sql . 'UPDATE '.$items_table.' SET item_title="'.$_POST[$item_title].'",item_URL="'.$_POST[$item_URL].'" WHERE item_id='.$item_id.';';
+				}
+
+			}
+
+			if ($debug) { echo '<br /><br />'; echo $sql; }
+
+			dbDelta($sql);
+
+		} elseif (isset($_POST["add"]) && trim($_POST["add"])!=='') {
+			
+			$sql = 'INSERT INTO '.$items_table.' (item_list) VALUES ("1")';
+			
+			if ($debug) { echo '<br /><br />'; echo $sql; }
+			$wpdb->query($sql);
+			
+		} else {
+			
+		}
+
+	}
+
+//the page itself
+?>
+
+<div class="wrap">
+	
+	<form name="outliner_options" method="post" 
+		action="<?php echo $_SERVER[PHP_SELF]; ?>?page=outliner.php">
+
+		<input type="hidden" name="action" value="outliner_update" />
+
+    	<h2>Lists Outliner</h2>
+
+		<p class="submit"><input name="save" id="save" type="submit" value="Save"></p>
+		
+		<table class="form-table">
+			<tbody>
+			
+			<?php $sql = 'SELECT item_id,item_title,item_URL FROM '.$items_table.' WHERE item_list="1"';
+
+			$items = $wpdb->get_results($sql);
+
+			if (!empty($items)) {
+				foreach ($items as $item) { ?>
+
+			<tr valign="top">
+				<th scope="row">
+					<label 
+					for="item<?php echo $item->item_id; ?>"><?php 
+					echo $item->item_id; ?></label>
+				</th>
+				<td>
+					<input type="text"
+					id="item<?php echo $item->item_id; ?>-title"
+					name="item<?php echo $item->item_id; ?>-title"
+					value="<?php echo $item->item_title; ?>" />
+				</td>
+				<td>
+					<input type="text" 
+					id="item<?php echo $item->item_id; ?>-URL"
+					name="item<?php echo $item->item_id; ?>-URL"
+					value="<?php echo $item->item_URL; ?>" />
+				</td>
+			</tr>
+
+				<?php }
+			} ?>
+			
+			<tr valign="top">
+				<th scope="row">
+					<input name="add" id="add" type="submit" value="Add row">
+				</th>
+			</tr>	
+			
+			</tbody>
+		</table>
+
+		<p class="submit"><input name="save" id="save" type="submit" value="Save"></p>
+   
+	</form> <?php
+}
+
+// Add admin pages
+function outliner_add_pages() {
+    add_options_page('Outliner','Outliner', 8, basename(__FILE__), 'outliner_admin');
+}
+
+add_action('admin_menu', 'outliner_add_pages');
+
 
 // Checks to see if plugin needs to be installed/updated in the DB
 add_action( 'init', 'outliner_init' );
+
 ?>
